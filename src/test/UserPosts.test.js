@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fetchUserPosts } from '../utils/fetchUserPosts';
+
 describe('Pruebas de Mocking con vi.spyOn(global, "fetch")', () => {
 
     // 💡 Limpieza: Es fundamental restaurar la función 'fetch' original después de cada test
@@ -56,10 +57,79 @@ describe('Pruebas de Mocking con vi.spyOn(global, "fetch")', () => {
 
 
     //TEST 1: Llamada Exitosa Simular una respuesta 200 con datos mockeados y verificar que la función devuelve esos datos.
+    it('debe devolver los datos cuando la respuesta es exitosa', async () => {
+        // ARRANGE
+        const mockPosts = [
+            { userId: 3, id: 1, title: 'Test Post 1' },
+            { userId: 3, id: 2, title: 'Test Post 2' },
+            { userId: 3, id: 3, title: 'Test Post 3' }
+        ];
+
+        const mockResponse = {
+            ok: true,
+            status: 200,
+            json: async () => mockPosts
+        };
+
+        vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+        // ACT
+        const result = await fetchUserPosts(3);
+
+        // ASSERT
+        expect(result.count).toBe(3);
+        expect(result.message).toBe('Se encontraron 3 posts.');
+    });
 
     //TEST 2: Verificación de Argumentos Asegurar que fetch es llamado exactamente con la URL correcta (ej. /posts?userId=5).
+    it('debe llamar a fetch con la URL correcta', async () => {
+        // ARRANGE
+        const mockResponse = {
+            ok: true,
+            status: 200,
+            json: async () => []
+        };
+
+        const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+        // ACT
+        await fetchUserPosts(5);
+
+        // ASSERT
+        expect(fetchSpy).toHaveBeenCalledWith('https://jsonplaceholder.typicode.com/posts?userId=5');
+    });
 
     //TEST 3: Simular Fallo de Red Mockear una respuesta con ok: false (ej. Status 500) y verificar que se lanza el mensaje de error esperado.
+    it('debe lanzar error cuando la respuesta no es ok', async () => {
+        // ARRANGE
+        const mockResponse = {
+            ok: false,
+            status: 500,
+            json: async () => {}
+        };
+
+        vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+        // ACT & ASSERT
+        await expect(fetchUserPosts(1)).rejects.toThrow('Fallo en la conexión: 500');
+    });
 
     //TEST 4: Simular Lista Vacía Mockear una respuesta 200 con un array vacío ([]) y verificar que la función maneja este caso devolviendo un mensaje de "no hay posts".
+    it('debe manejar correctamente cuando no hay posts', async () => {
+        // ARRANGE
+        const mockResponse = {
+            ok: true,
+            status: 200,
+            json: async () => []
+        };
+
+        vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+        // ACT
+        const result = await fetchUserPosts(99);
+
+        // ASSERT
+        expect(result.count).toBe(0);
+        expect(result.message).toBe('Usuario 99 no tiene posts.');
+    });
 });
